@@ -153,14 +153,29 @@
 
    + `<mapping:rbf>`：定义数据映射的配置
 
-     | 属性         | 描述                                                 | 示例值                                                | 是否必需 |
-     | ------------ | ---------------------------------------------------- | ----------------------------------------------------- | -------- |
-     | `direction`  | 数据映射的方向                                       | `read`：读入数据的方向 <br />``write`：写出数据的方向 | 是       |
-     | `from`       | 数据来源的网格名称                                   | 无                                                    | 是       |
-     | `to`         | xml数据目标的网格名称                                | 无                                                    | 是       |
-     | `constraint` | 数据映射的约束条件（`consistent` 或 `conservative`） | 无                                                    | 是       |
+     | 属性         | 描述                  | 示例值                                                       | 是否必需 |
+     | ------------ | --------------------- | ------------------------------------------------------------ | -------- |
+     | `direction`  | 数据映射的方向        | `read`：读入数据的方向 <br />`write`：写出数据的方向         | 是       |
+     | `from`       | 数据来源的网格名称    | 无                                                           | 是       |
+     | `to`         | xml数据目标的网格名称 | 无                                                           | 是       |
+     | `constraint` | 数据映射的约束条件    | `consistent`：一致性。确保映射后的数据在目标网格上保持一致，即数据的值在目标网格上是准确的。<br />`conservative`：保守性。确保映射后的数据在目标网格上保持守恒，即数据的总量在映射前后保持不变。 | 是       |
 
-     + `<basis-function:thin-plate-splines`
+     + `<basis-function>`标签
+
+       **设置数据映射的基函数类型，基函数用于数据在不同网格之间的平滑过渡**
+
+       | 基函数类型                                | 数学表达式                                                  | 特点                                       | 应用场景                                             |
+       | ----------------------------------------- | ----------------------------------------------------------- | ------------------------------------------ | ---------------------------------------------------- |
+       | **线性基函数 (Linear)**                   | $\phi(x) = x$                                               | 简单、计算效率高                           | 适用于线性问题                                       |
+       | **多项式基函数 (Polynomial)**             | $\phi(x) = x^n$，其中 $n$ 是多项式的阶数                    | 可以捕捉非线性关系，但可能导致过拟合       | 适用于非线性问题，但需要谨慎选择多项式的阶数         |
+       | **高斯基函数 (Gaussian)**                 | $\phi(x) = \exp\left(-\frac{(x - \mu)^2}{2\sigma^2}\right)$ | 具有无限光滑性，受形状参数 $\sigma$ 影响   | 适用于需要平滑插值的问题，如动态和不规则域的数据处理 |
+       | **多二次基函数 (Multiquadric)**           | $\phi(x) = \sqrt{1 + (\epsilon x)^2}$                       | 具有无限光滑性，受形状参数 $\epsilon$影响  | 适用于高维问题的插值和逼近                           |
+       | **逆多二次基函数 (Inverse Multiquadric)** | $\phi(x) = \frac{1}{1 + (\epsilon x)^2}$                    | 具有无限光滑性，受形状参数 $\epsilon$ 影响 | 适用于高维问题的插值和逼近                           |
+       | **逆二次基函数 (Inverse Quadric)**        | $\phi(x) = \frac{1}{\sqrt{1 + (\epsilon x)^2}}$             | 具有无限光滑性，受形状参数 $\epsilon$影响  | 适用于高维问题的插值和逼近                           |
+       | **薄板样条基函数 (Thin-Plate Spline)**    | $\phi(x) = x^2 \ln(x)$                                      | 分段光滑，无形状参数                       | 适用于二维和三维数据的平滑插值                       |
+       | **线性径向基函数 (Linear Radial)**        | $\phi(x) = x$                                               | 简单、计算效率高                           | 适用于简单的非线性问题                               |
+       | **三次基函数 (Cubic)**                    | $\phi(x) = x^3$                                             | 可以捕捉非线性关系                         | 适用于需要平滑插值的问题                             |
+       | **单项式基函数 (Monomial)**               | $\phi(x) = x^{2k-1}$，其中 $k$是自然数                      | 可以捕捉非线性关系                         | 适用于需要高阶多项式插值的问题                       |
 
    + `<watch-point>`：设置网格上设置监视点
 
@@ -185,7 +200,6 @@
      <receive-mesh name="Solid-Mesh" from="Solid" /> <!-- 接收来自"Solid"求解器的网格 "Solid-Mesh" -->
      <read-data name="Displacement" mesh="Fluid-Mesh" /> <!-- 从"Fluid-Mesh"网格读取"Displacement" 数据 -->
      <write-data name="Force" mesh="Fluid-Mesh" /> <!-- 向"Fluid-Mesh"网格写入"Force"数据 -->
-     
      <!-- 数据映射配置 -->
      <mapping:rbf direction="read" from="Solid-Mesh" to="Fluid-Mesh" constraint="consistent"> <!-- 数据读取映射，从 "Solid-Mesh" 映射到 "Fluid-Mesh"，约束条件为 "consistent" -->
        <basis-function:thin-plate-splines /> <!-- 使用薄板样条函数作为基函数 -->
@@ -195,17 +209,17 @@
      </mapping:rbf>
    </participant>
    
-   <!-- 定义 Solid 求解器的配置 -->
-   <participant name="Solid"> <!-- 参与者的名称为 "Solid" -->
-     <provide-mesh name="Solid-Mesh" /> <!-- 提供的网格名称为 "Solid-Mesh" -->
-     <read-data name="Force" mesh="Solid-Mesh" /> <!-- 从 "Solid-Mesh" 网格读取 "Force" 数据 -->
-     <write-data name="Displacement" mesh="Solid-Mesh" /> <!-- 向 "Solid-Mesh" 网格写入 "Displacement" 数据 -->
+   <!-- 定义Solid求解器的配置 -->
+   <participant name="Solid"> <!-- 参与者的名称为"Solid" -->
+     <provide-mesh name="Solid-Mesh" /> <!-- 提供的网格名称为"Solid-Mesh" -->
+     <read-data name="Force" mesh="Solid-Mesh" /> <!-- 从"Solid-Mesh"网格读取"Force" 数据 -->
+     <write-data name="Displacement" mesh="Solid-Mesh" /> <!-- 向"Solid-Mesh"网格写入"Displacement"数据 -->
      <!-- 监视点和 VT 文档输出 -->
-     <watch-point mesh="Solid-Mesh" name="Flap-Tip" coordinate="0.25;0.0" /> <!-- 在 "Solid-Mesh" 网格上设置监视点 "Flap-Tip"，坐标为 (0.25, 0.0) -->
-     <export:vtk directory="precice-exports" /> <!-- 将数据以 VTK 格式导出到 "precice-exports" 目录 -->
+     <watch-point mesh="Solid-Mesh" name="Flap-Tip" coordinate="0.25;0.0" /> <!-- 在"Solid-Mesh"网格上设置监视点"Flap-Tip"，坐标为 (0.25, 0.0) -->
+     <export:vtk directory="precice-exports" /> <!-- 将数据以VTK格式导出到"precice-exports"目录 -->
    </participant>
    ```
 
 6. `<m2n:sockets>`标签
 
-4. `<coupling-scheme:serial-explicit>`标签
+7. `<coupling-scheme:serial-explicit>`标签
